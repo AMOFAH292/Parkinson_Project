@@ -9,19 +9,22 @@ class VoiceTestScreen extends StatelessWidget {
       appBar: AppBar(
         backgroundColor: Colors.white,
         surfaceTintColor: Colors.white,
-        elevation: 0, // No shadow for a flat look
+        elevation: 5,
         leading: IconButton(
           icon: const Icon(Icons.arrow_back, color: Colors.black),
           onPressed: () => Navigator.of(context).pop(),
         ),
         title: const Text(
           'Voice Test',
-          style: TextStyle(
-            color: Colors.black,
-            fontWeight: FontWeight.w600,
+          style: TextStyle(color: Colors.black, fontWeight: FontWeight.w600),
+        ),
+        centerTitle: false,
+        shape: Border(
+          bottom: BorderSide(
+            color: Colors.grey.withValues(alpha: 0.5),
+            width: 0.6,
           ),
         ),
-        centerTitle: false, // Align title to the left
       ),
       body: Padding(
         padding: const EdgeInsets.symmetric(horizontal: 24.0, vertical: 32.0),

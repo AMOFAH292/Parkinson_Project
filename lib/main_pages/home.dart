@@ -14,6 +14,7 @@ class HomeScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
+        shape: Border(bottom: BorderSide(color: Colors.grey.withValues(alpha: 0.5), width: 0.6)),
         backgroundColor: Colors.white,
         surfaceTintColor: Colors.white,
         // Left side: Grid and Heart icons

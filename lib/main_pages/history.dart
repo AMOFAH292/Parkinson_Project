@@ -5,12 +5,48 @@ class HistoryScreen extends StatelessWidget {
 
   // Mock data to populate the history list
   static final List<TestResult> _mockHistoryData = [
-    TestResult('Voice Test', 'Oct 28, 2025', 'Stable', Colors.green.shade700, Icons.mic),
-    TestResult('Tremor Test', 'Oct 28, 2025', 'Needs Review', Colors.orange.shade700, Icons.trending_up),
-    TestResult('Gait Test', 'Oct 25, 2025', 'Minor Fluctuation', Colors.amber.shade700, Icons.directions_walk),
-    TestResult('Voice Test', 'Sep 15, 2025', 'Stable', Colors.green.shade700, Icons.mic),
-    TestResult('Tremor Test', 'Sep 01, 2025', 'Stable', Colors.green.shade700, Icons.trending_down),
-    TestResult('Gait Test', 'Aug 10, 2025', 'Stable', Colors.green.shade700, Icons.directions_walk),
+    TestResult(
+      'Voice Test',
+      'Oct 28, 2025',
+      'Stable',
+      Colors.green.shade700,
+      Icons.mic,
+    ),
+    TestResult(
+      'Tremor Test',
+      'Oct 28, 2025',
+      'Needs Review',
+      Colors.orange.shade700,
+      Icons.trending_up,
+    ),
+    TestResult(
+      'Gait Test',
+      'Oct 25, 2025',
+      'Minor Fluctuation',
+      Colors.amber.shade700,
+      Icons.directions_walk,
+    ),
+    TestResult(
+      'Voice Test',
+      'Sep 15, 2025',
+      'Stable',
+      Colors.green.shade700,
+      Icons.mic,
+    ),
+    TestResult(
+      'Tremor Test',
+      'Sep 01, 2025',
+      'Stable',
+      Colors.green.shade700,
+      Icons.trending_down,
+    ),
+    TestResult(
+      'Gait Test',
+      'Aug 10, 2025',
+      'Stable',
+      Colors.green.shade700,
+      Icons.directions_walk,
+    ),
   ];
 
   @override
@@ -30,6 +66,12 @@ class HistoryScreen extends StatelessWidget {
             onPressed: () {}, // Placeholder for sorting action
           ),
         ],
+        shape: Border(
+          bottom: BorderSide(
+            color: Colors.grey.withValues(alpha: 0.5),
+            width: 0.6,
+          ),
+        ),
       ),
       body: SingleChildScrollView(
         padding: const EdgeInsets.only(top: 16.0, left: 24.0, right: 24.0),
@@ -47,10 +89,7 @@ class HistoryScreen extends StatelessWidget {
             const SizedBox(height: 8),
             const Text(
               'Review results from your latest health assessments.',
-              style: TextStyle(
-                fontSize: 14,
-                color: Colors.grey,
-              ),
+              style: TextStyle(fontSize: 14, color: Colors.grey),
             ),
             const SizedBox(height: 20),
             // Displaying the list of mock data
@@ -124,10 +163,7 @@ class HistoryCard extends StatelessWidget {
                   const SizedBox(height: 4),
                   Text(
                     result.date,
-                    style: const TextStyle(
-                      fontSize: 12,
-                      color: Colors.grey,
-                    ),
+                    style: const TextStyle(fontSize: 12, color: Colors.grey),
                   ),
                 ],
               ),
@@ -165,7 +201,13 @@ class TestResult {
   final Color resultColor;
   final IconData icon;
 
-  TestResult(this.testName, this.date, this.result, this.resultColor, this.icon);
+  TestResult(
+    this.testName,
+    this.date,
+    this.result,
+    this.resultColor,
+    this.icon,
+  );
 }
 
 class LowRiskCard extends StatelessWidget {
@@ -225,14 +267,17 @@ class LowRiskCard extends StatelessWidget {
                     ),
                     children: <TextSpan>[
                       const TextSpan(
-                          text: 'Based on your recent tests, your health indicators '),
+                        text:
+                            'Based on your recent tests, your health indicators ',
+                      ),
                       TextSpan(
                         text: 'are stable.',
                         style: TextStyle(
                           color: const Color(0xFF8E24AA), // Deep purple color
                           fontWeight: FontWeight.w600,
-                          backgroundColor:
-                              const Color(0xFFE1BEE7).withOpacity(0.5), // Light purple background
+                          backgroundColor: const Color(
+                            0xFFE1BEE7,
+                          ).withOpacity(0.5), // Light purple background
                         ),
                       ),
                     ],

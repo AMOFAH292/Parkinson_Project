@@ -138,151 +138,187 @@ class GaitTestScreen extends StatelessWidget {
           ),
         ),
       ),
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.symmetric(horizontal: 24.0),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const SizedBox(height: 16),
-            // Header: How to Perform the Gait Test
-            Center(
-              child: Column(
-                children: [
-                  // Placeholder for animated walking icon
-                  Icon(
-                    Icons.directions_walk,
-                    size: 48,
-                    color: Theme.of(context).primaryColor,
-                  ),
-                  const SizedBox(height: 8),
-                  const Text(
-                    'How to Perform the Gait Test',
-                    style: TextStyle(
-                      fontSize: 22,
-                      fontWeight: FontWeight.bold,
-                      color: Colors.black,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            const SizedBox(height: 8),
-            const Text(
-              'Follow these steps to ensure an accurate gait analysis.',
-              style: TextStyle(fontSize: 16, color: Colors.grey),
-              textAlign: TextAlign.center,
-            ),
-            const SizedBox(height: 20),
-
-            // Instructions List
-            _buildInstructionPoint(
-                'Place your phone securely in your front or back pocket.'),
-            _buildInstructionPoint(
-                'Ensure the screen is locked to avoid accidental touches.'),
-            _buildInstructionPoint(
-                'Heading naturally for at least 30 seconds in a straight line.'),
-            _buildInstructionPoint(
-                'Avoid stopping or changing direction abruptly during the test.'),
-            const SizedBox(height: 30),
-
-            // Steps Taken / Live Tracking (Conditional)
-            if (isTestRunning) ...[
-              const Divider(color: Colors.grey, height: 1),
-              const SizedBox(height: 20),
-              Row(
-                crossAxisAlignment: CrossAxisAlignment.end,
-                children: [
-                  Text(
-                    '128',
-                    style: TextStyle(
-                      fontSize: 38,
-                      fontWeight: FontWeight.w900,
-                      color: Theme.of(context).primaryColor,
-                    ),
-                  ),
-                  const SizedBox(width: 8),
-                  const Padding(
-                    padding: EdgeInsets.only(bottom: 6.0),
-                    child: Text(
-                      'Steps taken',
-                      style: TextStyle(fontSize: 16, color: Colors.black54),
-                    ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 20),
-
-              // Motion Pattern Section
-              const Text(
-                'Motion Pattern',
-                style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
-              ),
-              const SizedBox(height: 10),
-              Container(
-                padding: const EdgeInsets.all(16),
-                decoration: BoxDecoration(
-                  color: Colors.grey.shade50,
-                  borderRadius: BorderRadius.circular(12),
-                  border: Border.all(color: Colors.grey.shade200),
-                ),
-                child: Column(
+      body: Container(
+        color: Colors.grey.shade50,
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.symmetric(horizontal: 24.0, vertical: 16.0),
+          child: Column(
+            children: [
+              // Test Instructions Card
+              _buildSectionCard(
+                context,
+                title: 'How to Perform the Gait Test',
+                icon: Icons.directions_walk,
+                content: Column(
                   children: [
-                    const Text('Visualizing motion in real-time...',
-                        style: TextStyle(fontSize: 16, color: Colors.grey)),
-                    const SizedBox(height: 10),
-                    Container(
-                      padding: const EdgeInsets.symmetric(
-                          horizontal: 12, vertical: 8),
-                      decoration: BoxDecoration(
-                        color: Colors.green.shade50,
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                      child: Text(
-                        'Detecting Stable Pattern',
-                        style: TextStyle(
-                            color: Colors.green.shade700,
-                            fontWeight: FontWeight.bold),
-                      ),
+                    const Text(
+                      'Follow these steps to ensure an accurate gait analysis.',
+                      style: TextStyle(fontSize: 16, color: Colors.grey),
+                      textAlign: TextAlign.center,
                     ),
+                    const SizedBox(height: 20),
+                    _buildInstructionPoint(
+                        'Place your phone securely in your front or back pocket.'),
+                    _buildInstructionPoint(
+                        'Ensure the screen is locked to avoid accidental touches.'),
+                    _buildInstructionPoint(
+                        'Walk naturally for at least 30 seconds in a straight line.'),
+                    _buildInstructionPoint(
+                        'Avoid stopping or changing direction abruptly during the test.'),
                   ],
                 ),
               ),
-              const SizedBox(height: 40),
-            ],
+              const SizedBox(height: 24),
 
-            // Results Section (Symmetry and Chart)
-            const GaitPatternChartPlaceholder(),
-            const SizedBox(height: 40),
-
-            // Analytical Insights
-            _buildAnalyticalInsights(context),
-            const SizedBox(height: 40),
-
-            // Retake Button
-            SizedBox(
-              width: double.infinity,
-              height: 56,
-              child: ElevatedButton(
-                onPressed: () {
-                  // TODO: Implement retake gait test logic
-                },
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: const Color(0xFF2196F3),
-                  foregroundColor: Colors.white,
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12),
+              // Live Tracking Card (Conditional)
+              if (isTestRunning) ...[
+                _buildSectionCard(
+                  context,
+                  title: 'Live Tracking',
+                  icon: Icons.timeline,
+                  content: Column(
+                    children: [
+                      Row(
+                        crossAxisAlignment: CrossAxisAlignment.end,
+                        children: [
+                          Text(
+                            '128',
+                            style: TextStyle(
+                              fontSize: 38,
+                              fontWeight: FontWeight.w900,
+                              color: Theme.of(context).primaryColor,
+                            ),
+                          ),
+                          const SizedBox(width: 8),
+                          const Padding(
+                            padding: EdgeInsets.only(bottom: 6.0),
+                            child: Text(
+                              'Steps taken',
+                              style: TextStyle(fontSize: 16, color: Colors.black54),
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 20),
+                      Container(
+                        padding: const EdgeInsets.all(16),
+                        decoration: BoxDecoration(
+                          color: Colors.blue.shade50,
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: Column(
+                          children: [
+                            const Text('Visualizing motion in real-time...',
+                                style: TextStyle(fontSize: 16, color: Colors.grey)),
+                            const SizedBox(height: 10),
+                            Container(
+                              padding: const EdgeInsets.symmetric(
+                                  horizontal: 12, vertical: 8),
+                              decoration: BoxDecoration(
+                                color: Colors.green.shade50,
+                                borderRadius: BorderRadius.circular(8),
+                              ),
+                              child: Text(
+                                'Detecting Stable Pattern',
+                                style: TextStyle(
+                                    color: Colors.green.shade700,
+                                    fontWeight: FontWeight.bold),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
                   ),
-                  elevation: 0,
                 ),
-                child: const Text(
-                  'Retake Gait Test',
-                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                const SizedBox(height: 24),
+              ],
+
+              // Results Card
+              _buildSectionCard(
+                context,
+                title: 'Test Results',
+                icon: Icons.bar_chart,
+                content: const GaitPatternChartPlaceholder(),
+              ),
+              const SizedBox(height: 24),
+
+              // Analytical Insights Card
+              _buildSectionCard(
+                context,
+                title: 'Analytical Insights',
+                icon: Icons.lightbulb_outline,
+                content: _buildAnalyticalInsights(context),
+              ),
+              const SizedBox(height: 24),
+
+              // Retake Button
+              SizedBox(
+                width: double.infinity,
+                height: 56,
+                child: ElevatedButton(
+                  onPressed: () {
+                    // TODO: Implement retake gait test logic
+                  },
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: const Color(0xFF2196F3),
+                    foregroundColor: Colors.white,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    elevation: 0,
+                  ),
+                  child: const Text(
+                    'Retake Gait Test',
+                    style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                  ),
                 ),
               ),
-            ),
-            const SizedBox(height: 20),
-          ],
+              const SizedBox(height: 20),
+            ],
+          ),
         ),
+      ),
+    );
+  }
+
+  // Helper for section cards
+  Widget _buildSectionCard(BuildContext context,
+      {required String title, required IconData icon, required Widget content}) {
+    return Container(
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.05),
+            spreadRadius: 1,
+            blurRadius: 10,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(icon, color: Theme.of(context).primaryColor, size: 28),
+              const SizedBox(width: 6),
+              Text(
+                title,
+                style: const TextStyle(
+                  fontSize: 20,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.black,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 16),
+          content,
+        ],
       ),
     );
   }

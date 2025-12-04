@@ -22,7 +22,6 @@ class MyApp extends StatelessWidget {
         colorScheme: ColorScheme.light(
           primary: const Color(0xFF1976D2), // Standard blue
           secondary: Colors.blueAccent,
-          background: Colors.white,
           surface: Colors.white,
         ),
         useMaterial3: true,

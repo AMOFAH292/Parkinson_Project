@@ -134,7 +134,7 @@ class ExploreScreen extends StatelessWidget {
                 padding: const EdgeInsets.only(bottom: 16.0, left: 24, right: 24),
                 child: ArticleListItem(article: article),
               );
-            }).toList(),
+            }),
 
             const SizedBox(height: 20),
             // Call to Action / Featured Content

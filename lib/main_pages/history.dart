@@ -98,7 +98,7 @@ class HistoryScreen extends StatelessWidget {
                 padding: const EdgeInsets.only(bottom: 12.0),
                 child: HistoryCard(result: result),
               );
-            }).toList(),
+            }),
             const SizedBox(height: 40),
           ],
         ),

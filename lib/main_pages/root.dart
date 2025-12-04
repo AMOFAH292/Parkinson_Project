@@ -29,7 +29,7 @@ class _RootScreenState extends State<RootScreen> {
   Widget build(BuildContext context) {
     // The Scaffold holds the current screen and the Bottom Navigation Bar
     return Scaffold(
-      backgroundColor: Theme.of(context).colorScheme.background,
+      backgroundColor: Theme.of(context).colorScheme.surface,
       body: _screens.elementAt(_selectedIndex),
       // The Navbar component is implemented here as BottomNavigationBar
       bottomNavigationBar: BottomNavigationBar(

@@ -41,10 +41,17 @@ class _VoiceTestScreenState extends State<VoiceTestScreen> {
 
   Future<void> _openRecorder() async {
     var status = await Permission.microphone.request();
-    if (status != PermissionStatus.granted) return;
+    if (status != PermissionStatus.granted) {
+      setState(() => _result = 'Microphone permission denied');
+      return;
+    }
 
-    await _recorder?.openRecorder();
-    setState(() => _isRecorderReady = true);
+    try {
+      await _recorder?.openRecorder();
+      setState(() => _isRecorderReady = true);
+    } catch (e) {
+      setState(() => _result = 'Failed to open recorder: $e');
+    }
   }
 
   Future<void> _startRecording() async {

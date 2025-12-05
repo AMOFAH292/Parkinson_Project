@@ -3,8 +3,10 @@ import 'package:flutter_sound/flutter_sound.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'dart:async';
 import 'dart:io';
+import 'dart:typed_data';
 import 'package:path_provider/path_provider.dart';
 import 'package:path/path.dart' as p;
+//import 'package:wave/wave.dart'; // for reading WAV PCM
 import '../providers/voice_test_provider.dart';
 
 class VoiceTestScreen extends StatefulWidget {
@@ -19,8 +21,7 @@ class _VoiceTestScreenState extends State<VoiceTestScreen> {
   bool _isRecording = false;
   bool _isRecorderReady = false;
   String? _result;
-  Timer? _timer;
-  final VoiceTestProvider _provider = VoiceTestProvider();
+  final ParkinsonInferenceProvider _provider = ParkinsonInferenceProvider();
 
   @override
   void initState() {
@@ -31,94 +32,96 @@ class _VoiceTestScreenState extends State<VoiceTestScreen> {
 
   @override
   void dispose() {
+    if (_recorder != null && _recorder!.isRecording) {
+      _stopRecording();
+    }
     _recorder?.closeRecorder();
-    _timer?.cancel();
     super.dispose();
   }
 
   Future<void> _openRecorder() async {
-    try {
-      await _recorder?.openRecorder();
-      setState(() {
-        _isRecorderReady = true;
-      });
-      print('Recorder opened successfully');
-    } catch (e) {
-      print('Failed to open recorder: $e');
-    }
+    var status = await Permission.microphone.request();
+    if (status != PermissionStatus.granted) return;
+
+    await _recorder?.openRecorder();
+    setState(() => _isRecorderReady = true);
   }
 
   Future<void> _startRecording() async {
-    print('Start recording called');
-    if (!_isRecorderReady) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Recorder not ready, please wait')),
-      );
-      return;
-    }
-    var status = await Permission.microphone.request();
-    print('Permission status: $status');
-    if (status != PermissionStatus.granted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Microphone permission denied')),
-      );
-      return;
-    }
+    if (!_isRecorderReady || _isRecording) return;
 
     Directory docsDir = await getApplicationDocumentsDirectory();
-    String path = p.join(docsDir.path, 'voice_test.wav');
-    print('Recording to: $path');
+    String path = p.join(docsDir.path, 'voice_test_full.wav');
 
     setState(() {
       _isRecording = true;
-      _result = null;
+      _result = 'Recording...';
     });
 
-    try {
-      await _recorder?.startRecorder(
-        toFile: path,
-        codec: Codec.pcm16WAV,
-      );
-      print('Recording started');
-
-      _timer = Timer(const Duration(seconds: 10), _stopRecording);
-    } catch (e) {
-      print('Failed to start recording: $e');
-      setState(() {
-        _isRecording = false;
-      });
-    }
+    await _recorder?.startRecorder(
+      toFile: path,
+      codec: Codec.pcm16WAV,
+      sampleRate: 16000,
+    );
   }
 
   Future<void> _stopRecording() async {
-    await _recorder?.stopRecorder();
-    setState(() {
-      _isRecording = false;
-    });
-    _timer?.cancel();
+    if (!_isRecording) return;
 
-    Directory docsDir = await getApplicationDocumentsDirectory();
-    String path = p.join(docsDir.path, 'voice_test.wav');
-    print('File exists: ${File(path).existsSync()}');
+    String? path = await _recorder?.stopRecorder();
+    setState(() => _isRecording = false);
+    await Future.delayed(const Duration(milliseconds: 500));
+
+    if (path == null || !File(path).existsSync()) {
+      setState(() => _result = 'Recording file not found');
+      return;
+    }
+
+    setState(() => _result = 'Analyzing...');
 
     try {
-      String result = await _provider.classifyAudio(path);
+      // --- Convert WAV file to Float32List PCM ---
+      Float32List waveform = await _loadWavAsFloat32(path);
+
+      // --- Run inference ---
+      final inference = await _provider.predictFromAudio(waveform);
+
       setState(() {
-        _result = result;
+        _result =
+            'Overall Class: ${inference.overallClass == 1 ? "Parkinson" : "Healthy"}\n'
+            'Parkinson Segments: ${inference.parkinsonSegmentCount}\n'
+            'Confidence: ${inference.confidence.toStringAsFixed(1)}%';
       });
     } catch (e) {
-      setState(() {
-        _result = 'Error: $e';
-      });
+      setState(() => _result = 'Classification Error: $e');
     }
+  }
+
+  // --- Helper: Load WAV file as Float32List ---
+  Future<Float32List> _loadWavAsFloat32(String filePath) async {
+    final file = File(filePath);
+    final bytes = await file.readAsBytes();
+
+    // WAV file header is 44 bytes (PCM16)
+    final data = bytes.sublist(44);
+    final buffer = ByteData.sublistView(Uint8List.fromList(data));
+    final samples = Float32List(data.length ~/ 2);
+
+    for (int i = 0; i < samples.length; i++) {
+      int val = buffer.getInt16(i * 2, Endian.little);
+      samples[i] = val / 32768.0; // normalize to [-1.0, 1.0]
+    }
+    return samples;
   }
 
   @override
   Widget build(BuildContext context) {
+    bool canStart = _isRecorderReady && !_isRecording;
+    bool canStop = _isRecording;
+
     return Scaffold(
       appBar: AppBar(
         backgroundColor: Colors.white,
-        surfaceTintColor: Colors.white,
         elevation: 5,
         leading: IconButton(
           icon: const Icon(Icons.arrow_back, color: Colors.black),
@@ -128,82 +131,73 @@ class _VoiceTestScreenState extends State<VoiceTestScreen> {
           'Voice Test',
           style: TextStyle(color: Colors.black, fontWeight: FontWeight.w600),
         ),
-        centerTitle: false,
-        shape: Border(
-          bottom: BorderSide(
-            color: Colors.grey.withValues(alpha: 0.5),
-            width: 0.6,
-          ),
-        ),
       ),
       body: Padding(
         padding: const EdgeInsets.symmetric(horizontal: 24.0, vertical: 32.0),
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Icon(
-                  _isRecording ? Icons.mic : Icons.mic_none,
-                  size: 150,
-                  color: _isRecording ? Colors.red : const Color(0xFF2196F3),
-                ),
-                const SizedBox(height: 40),
-                Text(
-                  _isRecording ? 'Recording...' : 'Prepare for Voice Test',
-                  textAlign: TextAlign.center,
-                  style: const TextStyle(
-                    fontSize: 24,
-                    fontWeight: FontWeight.bold,
-                    color: Colors.black87,
-                  ),
-                ),
-                const SizedBox(height: 16),
-                Text(
-                  _isRecording
-                      ? 'Recording for 10 seconds...'
-                      : 'Speak clearly and consistently into the microphone for about 10-15 seconds. Ensure you are in a quiet environment for accurate results.',
-                  textAlign: TextAlign.center,
-                  style: const TextStyle(
-                    fontSize: 16,
-                    color: Colors.grey,
-                    height: 1.5,
-                  ),
-                ),
-                if (_result != null) ...[
-                  const SizedBox(height: 20),
-                  Text(
-                    'Result: $_result',
-                    textAlign: TextAlign.center,
-                    style: const TextStyle(
-                      fontSize: 18,
-                      fontWeight: FontWeight.bold,
-                      color: Colors.green,
-                    ),
-                  ),
-                ],
-              ],
+            Icon(
+              _isRecording ? Icons.mic : Icons.mic_none,
+              size: 150,
+              color: _isRecording ? Colors.red : (canStart ? Colors.blue : Colors.grey),
             ),
             const SizedBox(height: 40),
-            SizedBox(
-              width: double.infinity,
-              height: 56,
-              child: ElevatedButton(
-                onPressed: _isRecording ? null : _startRecording,
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: _isRecording ? Colors.grey : const Color(0xFF2196F3),
-                  foregroundColor: Colors.white,
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  elevation: 0,
+            Text(
+              _isRecording ? 'Recording...' : 'Prepare for Voice Test',
+              textAlign: TextAlign.center,
+              style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
+            ),
+            const SizedBox(height: 16),
+            if (_result != null) ...[
+              const SizedBox(height: 20),
+              Container(
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: Colors.blueGrey.shade50,
+                  borderRadius: BorderRadius.circular(8),
                 ),
                 child: Text(
-                  _isRecording ? 'Recording...' : 'Start Recording',
-                  style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                  _result!,
+                  textAlign: TextAlign.center,
+                  style: TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.w600,
+                    color: _result!.contains('Parkinson') ? Colors.red.shade800 : Colors.green.shade800,
+                  ),
                 ),
               ),
+            ],
+            const SizedBox(height: 40),
+            Row(
+              children: [
+                Expanded(
+                  child: SizedBox(
+                    height: 56,
+                    child: ElevatedButton(
+                      onPressed: canStart ? _startRecording : null,
+                      child: Text(
+                        _isRecording ? 'Recording...' : 'Start Recording',
+                        style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                      ),
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 16),
+                Expanded(
+                  child: SizedBox(
+                    height: 56,
+                    child: ElevatedButton(
+                      onPressed: canStop ? _stopRecording : null,
+                      style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
+                      child: const Text(
+                        'Stop & Analyze',
+                        style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                      ),
+                    ),
+                  ),
+                ),
+              ],
             ),
           ],
         ),

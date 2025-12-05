@@ -66,6 +66,7 @@ flutter:
     - assets/images/
     - assets/models/yamnet_feature_extractor.tflite
     - assets/models/best_pd_yamnet_classifier.tflite
+    - assets/models/yamnet_5s_mean_embedding.tflite
 
   # To add assets to your application, add an assets section, like this:
   # assets:

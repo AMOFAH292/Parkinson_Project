@@ -18,15 +18,20 @@ class VoiceTestScreen extends StatefulWidget {
 
 class _VoiceTestScreenState extends State<VoiceTestScreen> {
   FlutterSoundRecorder? _recorder;
+  FlutterSoundPlayer? _player;
   bool _isRecording = false;
+  bool _isPlaying = false;
   bool _isRecorderReady = false;
   String? _result;
+  String? _recordedFilePath;
+  List<double>? _segmentProbabilities;
   final ParkinsonInferenceProvider _provider = ParkinsonInferenceProvider();
 
   @override
   void initState() {
     super.initState();
     _recorder = FlutterSoundRecorder();
+    _player = FlutterSoundPlayer();
     _openRecorder();
   }
 
@@ -36,6 +41,7 @@ class _VoiceTestScreenState extends State<VoiceTestScreen> {
       _stopRecording();
     }
     _recorder?.closeRecorder();
+    _player?.closePlayer();
     super.dispose();
   }
 
@@ -59,6 +65,7 @@ class _VoiceTestScreenState extends State<VoiceTestScreen> {
 
     Directory docsDir = await getApplicationDocumentsDirectory();
     String path = p.join(docsDir.path, 'voice_test_full.wav');
+    _recordedFilePath = path;
 
     setState(() {
       _isRecording = true;
@@ -76,6 +83,7 @@ class _VoiceTestScreenState extends State<VoiceTestScreen> {
     if (!_isRecording) return;
 
     String? path = await _recorder?.stopRecorder();
+    _recordedFilePath = path;
     setState(() => _isRecording = false);
     await Future.delayed(const Duration(milliseconds: 500));
 
@@ -94,6 +102,7 @@ class _VoiceTestScreenState extends State<VoiceTestScreen> {
       final inference = await _provider.predictFromAudio(waveform);
 
       setState(() {
+        _segmentProbabilities = inference.segmentProbabilities;
         _result =
             'Overall Class: ${inference.overallClass == 1 ? "Parkinson" : "Healthy"}\n'
             'Parkinson Segments: ${inference.parkinsonSegmentCount}\n'
@@ -121,6 +130,38 @@ class _VoiceTestScreenState extends State<VoiceTestScreen> {
     return samples;
   }
 
+  // --- Play recorded audio ---
+  Future<void> _playRecording() async {
+    if (_recordedFilePath == null || !File(_recordedFilePath!).existsSync()) {
+      setState(() => _result = 'No recording to play');
+      return;
+    }
+
+    try {
+      await _player?.openPlayer();
+      setState(() => _isPlaying = true);
+      await _player?.startPlayer(fromURI: _recordedFilePath);
+      _player?.onProgress?.listen((event) {
+        if (event.position >= event.duration) {
+          setState(() => _isPlaying = false);
+        }
+      });
+    } catch (e) {
+      setState(() => _result = 'Playback error: $e');
+    }
+  }
+
+  // --- Stop playing audio ---
+  Future<void> _stopPlaying() async {
+    try {
+      await _player?.stopPlayer();
+      await _player?.closePlayer();
+      setState(() => _isPlaying = false);
+    } catch (e) {
+      setState(() => _result = 'Stop playback error: $e');
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     bool canStart = _isRecorderReady && !_isRecording;
@@ -145,13 +186,13 @@ class _VoiceTestScreenState extends State<VoiceTestScreen> {
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
             Icon(
-              _isRecording ? Icons.mic : Icons.mic_none,
+              _isRecording ? Icons.mic : (_isPlaying ? Icons.play_arrow : Icons.mic_none),
               size: 150,
-              color: _isRecording ? Colors.red : (canStart ? Colors.blue : Colors.grey),
+              color: _isRecording ? Colors.red : (_isPlaying ? Colors.green : (canStart ? Colors.blue : Colors.grey)),
             ),
             const SizedBox(height: 40),
             Text(
-              _isRecording ? 'Recording...' : 'Prepare for Voice Test',
+              _isRecording ? 'Recording...' : (_isPlaying ? 'Playing...' : 'Prepare for Voice Test'),
               textAlign: TextAlign.center,
               style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
             ),
@@ -164,14 +205,37 @@ class _VoiceTestScreenState extends State<VoiceTestScreen> {
                   color: Colors.blueGrey.shade50,
                   borderRadius: BorderRadius.circular(8),
                 ),
-                child: Text(
-                  _result!,
-                  textAlign: TextAlign.center,
-                  style: TextStyle(
-                    fontSize: 16,
-                    fontWeight: FontWeight.w600,
-                    color: _result!.contains('Parkinson') ? Colors.red.shade800 : Colors.green.shade800,
-                  ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      _result!,
+                      textAlign: TextAlign.center,
+                      style: TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.w600,
+                        color: _result!.contains('Parkinson') ? Colors.red.shade800 : Colors.green.shade800,
+                      ),
+                    ),
+                    if (_segmentProbabilities != null) ...[
+                      const SizedBox(height: 10),
+                      const Text(
+                        'Segment Probabilities:',
+                        style: TextStyle(fontWeight: FontWeight.bold),
+                      ),
+                      ..._segmentProbabilities!.asMap().entries.map((entry) {
+                        int index = entry.key;
+                        double prob = entry.value;
+                        return Text(
+                          'Segment ${index + 1}: ${prob.toStringAsFixed(2)}',
+                          style: TextStyle(
+                            color: prob > 0.5 ? Colors.red : Colors.green,
+                            fontWeight: FontWeight.w500,
+                          ),
+                        );
+                      }),
+                    ],
+                  ],
                 ),
               ),
             ],
@@ -206,6 +270,22 @@ class _VoiceTestScreenState extends State<VoiceTestScreen> {
                 ),
               ],
             ),
+            if (_recordedFilePath != null) ...[
+              const SizedBox(height: 20),
+              SizedBox(
+                height: 56,
+                child: ElevatedButton(
+                  onPressed: _isPlaying ? _stopPlaying : _playRecording,
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: _isPlaying ? Colors.red : Colors.green,
+                  ),
+                  child: Text(
+                    _isPlaying ? 'Stop Playing' : 'Play Recording',
+                    style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                  ),
+                ),
+              ),
+            ],
           ],
         ),
       ),

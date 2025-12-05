@@ -12,11 +12,13 @@ class ParkinsonInferenceResult {
   final int overallClass; // 0 = healthy, 1 = Parkinson's
   final int parkinsonSegmentCount;
   final double confidence; // percentage 0-100%
+  final List<double> segmentProbabilities;
 
   ParkinsonInferenceResult({
     required this.overallClass,
     required this.parkinsonSegmentCount,
     required this.confidence,
+    required this.segmentProbabilities,
   });
 }
 
@@ -53,6 +55,7 @@ class ParkinsonInferenceProvider extends ChangeNotifier {
     int totalSegments = (waveform.length / segmentSamples).ceil();
 
     List<int> segmentPredictions = [];
+    List<double> segmentProbabilities = [];
 
     for (int i = 0; i < totalSegments; i++) {
       // Calculate segment range
@@ -87,6 +90,7 @@ class ParkinsonInferenceProvider extends ChangeNotifier {
       // --- Step 3: Threshold 0.5 ---
       int predictedClass = classifierOutput[0][0] >= 0.5 ? 1 : 0;
       segmentPredictions.add(predictedClass);
+      segmentProbabilities.add(classifierOutput[0][0]);
     }
 
     // --- Step 4: Majority voting ---
@@ -102,6 +106,7 @@ class ParkinsonInferenceProvider extends ChangeNotifier {
       overallClass: overallClass,
       parkinsonSegmentCount: parkinsonCount,
       confidence: confidence,
+      segmentProbabilities: segmentProbabilities,
     );
   }
 }

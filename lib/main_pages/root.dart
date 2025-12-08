@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:park_ai/main_pages/explore.dart';
 import 'package:park_ai/main_pages/home.dart';
 import 'package:park_ai/main_pages/history.dart';
+import 'package:park_ai/main_pages/doctor_referral.dart';
 
 class RootScreen extends StatefulWidget {
   const RootScreen({super.key});
@@ -17,6 +18,7 @@ class _RootScreenState extends State<RootScreen> {
     HomeScreen(),
     HistoryScreen(),
     ExploreScreen(),
+    DoctorReferralScreen(),
   ];
 
   void _onItemTapped(int index) {
@@ -48,6 +50,11 @@ class _RootScreenState extends State<RootScreen> {
             icon: Icon(Icons.explore_outlined),
             activeIcon: Icon(Icons.explore),
             label: 'Explore',
+          ),
+          BottomNavigationBarItem(
+            icon: Icon(Icons.medical_services_outlined),
+            activeIcon: Icon(Icons.medical_services),
+            label: 'Doctors',
           ),
         ],
         currentIndex: _selectedIndex,

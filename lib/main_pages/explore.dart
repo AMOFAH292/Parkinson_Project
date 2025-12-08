@@ -28,7 +28,7 @@ class ExploreScreen extends StatelessWidget {
       title: 'New Study Links Gut Health to Early PD Diagnosis',
       source: 'Science Today',
       date: '1 hour ago',
-      imageUrl: 'https://placehold.co/600x400/80DEEA/000000?text=Gut+Health+Research',
+      imageUrl: 'assets/images/gut_health.webp',
       categoryIcon: Icons.science_outlined,
       categoryColor: Colors.teal,
     ),
@@ -36,7 +36,7 @@ class ExploreScreen extends StatelessWidget {
       title: 'The Role of Exercise in Managing Tremor Severity',
       source: 'Wellness Weekly',
       date: '2 days ago',
-      imageUrl: 'https://placehold.co/600x400/A5D6A7/000000?text=Fitness+Tips',
+      imageUrl: 'assets/images/exercise.jpg',
       categoryIcon: Icons.fitness_center_outlined,
       categoryColor: Colors.green,
     ),
@@ -44,7 +44,7 @@ class ExploreScreen extends StatelessWidget {
       title: 'FDA Approves New Drug Therapy for Motor Fluctuations',
       source: 'Health News Network',
       date: '5 days ago',
-      imageUrl: 'https://placehold.co/600x400/9FA8DA/000000?text=Medical+Breakthrough',
+      imageUrl: 'assets/images/new_drug.jpg',
       categoryIcon: Icons.medical_services_outlined,
       categoryColor: Colors.indigo,
     ),
@@ -223,7 +223,7 @@ class TrendingNewsCard extends StatelessWidget {
           // Image
           ClipRRect(
             borderRadius: const BorderRadius.vertical(top: Radius.circular(16)),
-            child: Image.network(
+            child: Image.asset(
               article.imageUrl,
               height: 120,
               width: 300,
@@ -310,7 +310,7 @@ class ArticleListItem extends StatelessWidget {
           // Thumbnail Image
           ClipRRect(
             borderRadius: BorderRadius.circular(8),
-            child: Image.network(
+            child: Image.asset(
               article.imageUrl,
               height: 70,
               width: 70,

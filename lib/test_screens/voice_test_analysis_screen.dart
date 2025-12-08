@@ -190,7 +190,7 @@ class VoiceTestAnalysisScreen extends StatelessWidget {
 
     return Container(
       width: double.infinity,
-      height: 203, // Make it taller, square-ish
+      height: 210, // Make it taller, square-ish
       padding: const EdgeInsets.all(16.0),
       decoration: BoxDecoration(
         color: Colors.white,

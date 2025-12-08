@@ -70,8 +70,8 @@ flutter:
   uses-material-design: true
   assets:
     - assets/images/
-    - assets/models/yamnet_feature_extractor.tflite
     - assets/models/best_pd_yamnet_classifier.tflite
+    - assets/models/best_yamnet_model.tflite
     - assets/models/yamnet_5s_mean_embedding.tflite
     - assets/models/netv2_model.tflite
 

@@ -35,79 +35,112 @@ class ParkinsonInferenceProvider extends ChangeNotifier {
   }
 
   Future<void> _loadModels() async {
-    _embeddingInterpreter = await Interpreter.fromAsset('assets/models/yamnet_5s_mean_embedding.tflite',
-        options: InterpreterOptions()..threads = 4);
-        print("Loaded embedding model");
+    try {
+      _embeddingInterpreter = await Interpreter.fromAsset('assets/models/yamnet_5s_mean_embedding.tflite',
+          options: InterpreterOptions()..threads = 4);
+      print("Loaded embedding model successfully");
+    } catch (e, stackTrace) {
+      print("Error loading embedding model: $e");
+      print("Stack trace: $stackTrace");
+      rethrow;
+    }
 
-    _classifierInterpreter = await Interpreter.fromAsset('assets/models/best_pd_yamnet_classifier.tflite',
-        options: InterpreterOptions()..threads = 4);
-        print("Loaded classifier model");
+    try {
+      _classifierInterpreter = await Interpreter.fromAsset('assets/models/best_yamnet_model.tflite',
+          options: InterpreterOptions()..threads = 4);
+      print("Loaded classifier model successfully");
+    } catch (e, stackTrace) {
+      print("Error loading classifier model: $e");
+      print("Stack trace: $stackTrace");
+      rethrow;
+    }
+
     _modelsLoaded = true;
     notifyListeners();
   }
 
   /// Main function: accepts raw PCM float32 audio, 16 kHz
   Future<ParkinsonInferenceResult> predictFromAudio(Float32List waveform) async {
-    if (!_modelsLoaded) throw Exception('Models not loaded yet');
+    try {
+      if (!_modelsLoaded) throw Exception('Models not loaded yet');
 
-    const int sampleRate = 16000;
-    const int segmentSamples = sampleRate * 5; // 5 sec
-    int totalSegments = (waveform.length / segmentSamples).ceil();
+      const int sampleRate = 16000;
+      const int segmentSamples = sampleRate * 5; // 5 sec
+      int totalSegments = (waveform.length / segmentSamples).ceil();
+      print("Starting inference on ${waveform.length} samples, $totalSegments segments");
 
-    List<int> segmentPredictions = [];
-    List<double> segmentProbabilities = [];
+      List<int> segmentPredictions = [];
+      List<double> segmentProbabilities = [];
 
-    for (int i = 0; i < totalSegments; i++) {
-      // Calculate segment range
-      int start = i * segmentSamples;
-      //int end = min(start + segmentSamples, waveform.length);
+      for (int i = 0; i < totalSegments; i++) {
+        try {
+          print("Processing segment $i");
 
-      // Copy segment
-      Float32List segment = Float32List(segmentSamples);
-      for (int j = 0; j < segmentSamples; j++) {
-        if (start + j < waveform.length) {
-          segment[j] = waveform[start + j];
-        } else {
-          segment[j] = 0.0; // zero-pad if last segment is shorter
+          // Calculate segment range
+          int start = i * segmentSamples;
+          //int end = min(start + segmentSamples, waveform.length);
+
+          // Copy segment
+          Float32List segment = Float32List(segmentSamples);
+          for (int j = 0; j < segmentSamples; j++) {
+            if (start + j < waveform.length) {
+              segment[j] = waveform[start + j];
+            } else {
+              segment[j] = 0.0; // zero-pad if last segment is shorter
+            }
+          }
+
+          // --- Step 1: Run embedding model ---
+          // Input shape: [1, 80000]
+          var input = segment.buffer.asFloat32List();
+          var inputTensor = [input]; // batch dimension
+          var embeddingOutput = ListReshape(List.filled(1 * 1024, 0.0)).reshape([1, 1024]);
+
+          _embeddingInterpreter.run(inputTensor, embeddingOutput);
+          print("Embedding model run successful for segment $i");
+
+          // --- Step 2: Run classifier model ---
+          // Input: (1, 1024)
+          var classifierInput = embeddingOutput;
+          var classifierOutput = ListReshape(List.filled(1 * 2, 0.0)).reshape([1, 2]);
+    
+          _classifierInterpreter.run(classifierInput, classifierOutput);
+          print("Classifier model run successful for segment $i");
+    
+          // --- Step 3: Threshold 0.5 ---
+          // Assuming output is [prob_class0, prob_class1], use prob_class1
+          int predictedClass = classifierOutput[0][1] >= 0.5 ? 1 : 0;
+          segmentPredictions.add(predictedClass);
+          segmentProbabilities.add(classifierOutput[0][1]);
+          print("Segment $i prediction: $predictedClass (prob: ${classifierOutput[0][0]})");
+        } catch (e, stackTrace) {
+          print("Error processing segment $i: $e");
+          print("Stack trace: $stackTrace");
+          // Continue to next segment or rethrow
+          rethrow;
         }
       }
 
-      // --- Step 1: Run embedding model ---
-      // Input shape: [1, 80000]
-      var input = segment.buffer.asFloat32List();
-      var inputTensor = [input]; // batch dimension
-      var embeddingOutput = ListReshape(List.filled(1 * 1024, 0.0)).reshape([1, 1024]);
+      // --- Step 4: Majority voting ---
+      int parkinsonCount = segmentPredictions.where((c) => c == 1).length;
+      int healthyCount = segmentPredictions.where((c) => c == 0).length;
+      int overallClass = parkinsonCount > healthyCount ? 1 : 0;
 
-      _embeddingInterpreter.run(inputTensor, embeddingOutput);
-
-      // --- Step 2: Run classifier model ---
-      // Input: (1, 1024)
-      var classifierInput = embeddingOutput;
-      var classifierOutput = ListReshape(List.filled(1 * 1, 0.0)).reshape([1, 1]);
-
-      _classifierInterpreter.run(classifierInput, classifierOutput);
-
-      // --- Step 3: Threshold 0.5 ---
-      int predictedClass = classifierOutput[0][0] >= 0.5 ? 1 : 0;
-      segmentPredictions.add(predictedClass);
-      segmentProbabilities.add(classifierOutput[0][0]);
+      // --- Step 5: Confidence percentage ---
+      int maxCount = max(parkinsonCount, healthyCount);
+      double confidence = (maxCount / totalSegments) * 100.0;
+      print("Inference done: Class $overallClass with confidence $confidence%");
+      return ParkinsonInferenceResult(
+        overallClass: overallClass,
+        parkinsonSegmentCount: parkinsonCount,
+        confidence: confidence,
+        segmentProbabilities: segmentProbabilities,
+      );
+    } catch (e, stackTrace) {
+      print("Error in predictFromAudio: $e");
+      print("Stack trace: $stackTrace");
+      rethrow;
     }
-
-    // --- Step 4: Majority voting ---
-    int parkinsonCount = segmentPredictions.where((c) => c == 1).length;
-    int healthyCount = segmentPredictions.where((c) => c == 0).length;
-    int overallClass = parkinsonCount > healthyCount ? 1 : 0;
-
-    // --- Step 5: Confidence percentage ---
-    int maxCount = max(parkinsonCount, healthyCount);
-    double confidence = (maxCount / totalSegments) * 100.0;
-
-    return ParkinsonInferenceResult(
-      overallClass: overallClass,
-      parkinsonSegmentCount: parkinsonCount,
-      confidence: confidence,
-      segmentProbabilities: segmentProbabilities,
-    );
   }
 }
 

@@ -41,6 +41,7 @@ dependencies:
   provider: ^6.1.1
   fl_chart: ^0.66.2
   audio_waveforms: ^1.0.4
+  video_player: ^2.8.0
 
 dev_dependencies:
   flutter_test:
@@ -70,6 +71,7 @@ flutter:
   uses-material-design: true
   assets:
     - assets/images/
+    - assets/videos/
     - assets/models/best_pd_yamnet_classifier.tflite
     - assets/models/best_yamnet_model.tflite
     - assets/models/yamnet_5s_mean_embedding.tflite

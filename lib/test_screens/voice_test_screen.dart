@@ -249,11 +249,12 @@ Shorter wavelengths are more easily scattered in the atmosphere. To the satellit
 
   double _calculateVolume(Float32List waveform) {
     if (waveform.isEmpty) return 0.0;
-    double maxVal = 0;
+    double sumSquares = 0.0;
     for (var sample in waveform) {
-      maxVal = max(maxVal, sample.abs());
+      sumSquares += sample * sample;
     }
-    return maxVal;
+    double rms = sqrt(sumSquares / waveform.length);
+    return rms;
   }
 
   double _calculatePitch(Float32List waveform) {

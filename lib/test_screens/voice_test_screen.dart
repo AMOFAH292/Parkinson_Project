@@ -4,10 +4,16 @@ import 'package:permission_handler/permission_handler.dart';
 import 'dart:async';
 import 'dart:io';
 import 'dart:typed_data';
+import 'dart:math';
 import 'package:path_provider/path_provider.dart';
 import 'package:path/path.dart' as p;
-//import 'package:wave/wave.dart'; // for reading WAV PCM
+import 'package:audio_waveforms/audio_waveforms.dart';
 import '../providers/voice_test_provider.dart';
+import 'voice_test_initial_screen.dart';
+import 'voice_test_recording_screen.dart';
+import 'voice_test_analysis_screen.dart';
+
+enum ScreenState { initial, recording, analysis }
 
 class VoiceTestScreen extends StatefulWidget {
   const VoiceTestScreen({super.key});
@@ -16,7 +22,7 @@ class VoiceTestScreen extends StatefulWidget {
   State<VoiceTestScreen> createState() => _VoiceTestScreenState();
 }
 
-class _VoiceTestScreenState extends State<VoiceTestScreen> {
+class _VoiceTestScreenState extends State<VoiceTestScreen> with TickerProviderStateMixin {
   FlutterSoundRecorder? _recorder;
   FlutterSoundPlayer? _player;
   bool _isRecording = false;
@@ -27,11 +33,48 @@ class _VoiceTestScreenState extends State<VoiceTestScreen> {
   List<double>? _segmentProbabilities;
   final ParkinsonInferenceProvider _provider = ParkinsonInferenceProvider();
 
+  ScreenState currentState = ScreenState.initial;
+  Timer? recordingTimer;
+  int recordingDuration = 0;
+  List<double> waveformData = [];
+  ScrollController textScrollController = ScrollController();
+  Timer? scrollTimer;
+  double textScrollPosition = 0.0;
+  bool isDraggingText = false;
+
+  late RecorderController recorderController;
+
+  List<String> lines = [];
+  int currentLineIndex = 0;
+
+  // Metrics
+  double pitch = 0.0;
+  double volume = 0.0;
+  double clarity = 0.0;
+  List<double> speechPatterns = [];
+
+
+  final String textToRead = """
+The quick brown fox jumps over the lazy dog. This is a sample text for voice recording. Please read it aloud clearly and at a natural pace. The system will analyze your voice for potential signs of Parkinson's disease. Speak loudly enough for the microphone to capture your voice accurately. Remember to pronounce each word distinctly.
+""";
+
+  List<String> _splitIntoLines(String text, int wordsPerLine) {
+    List<String> words = text.split(' ');
+    List<String> lines = [];
+    for (int i = 0; i < words.length; i += wordsPerLine) {
+      int end = (i + wordsPerLine < words.length) ? i + wordsPerLine : words.length;
+      lines.add(words.sublist(i, end).join(' '));
+    }
+    return lines;
+  }
+
   @override
   void initState() {
     super.initState();
     _recorder = FlutterSoundRecorder();
     _player = FlutterSoundPlayer();
+    recorderController = RecorderController();
+    lines = _splitIntoLines(textToRead, 8); // 8 words per line
     _openRecorder();
   }
 
@@ -42,8 +85,13 @@ class _VoiceTestScreenState extends State<VoiceTestScreen> {
     }
     _recorder?.closeRecorder();
     _player?.closePlayer();
+    recordingTimer?.cancel();
+    scrollTimer?.cancel();
+    textScrollController.dispose();
+    recorderController.dispose();
     super.dispose();
   }
+
 
   Future<void> _openRecorder() async {
     var status = await Permission.microphone.request();
@@ -58,6 +106,18 @@ class _VoiceTestScreenState extends State<VoiceTestScreen> {
     } catch (e) {
       setState(() => _result = 'Failed to open recorder: $e');
     }
+  }
+
+  void _startTest() {
+    setState(() {
+      currentState = ScreenState.recording;
+      recordingDuration = 0;
+      waveformData = [];
+      currentLineIndex = 0;
+    });
+    _startRecording();
+    _startTimer();
+    _startScrollingText();
   }
 
   Future<void> _startRecording() async {
@@ -77,6 +137,62 @@ class _VoiceTestScreenState extends State<VoiceTestScreen> {
       codec: Codec.pcm16WAV,
       sampleRate: 16000,
     );
+
+    // Read waveform data from file periodically
+    Timer.periodic(const Duration(milliseconds: 100), (timer) {
+      if (!_isRecording) {
+        timer.cancel();
+        return;
+      }
+      if (File(path).existsSync()) {
+        final bytes = File(path).readAsBytesSync();
+        if (bytes.length > 44) {
+          final data = bytes.sublist(44);
+          final buffer = ByteData.sublistView(Uint8List.fromList(data));
+          final samples = <double>[];
+          int numSamples = min(data.length ~/ 2, 200);
+          for (int i = 0; i < numSamples; i++) {
+            int val = buffer.getUint16(i * 2, Endian.little);
+            val = val - 32768; // convert unsigned to signed
+            samples.add(val / 32768.0);
+          }
+          setState(() => waveformData = samples);
+        }
+      }
+    });
+  }
+
+  void _startTimer() {
+    recordingTimer = Timer.periodic(const Duration(seconds: 1), (timer) {
+      setState(() {
+        recordingDuration++;
+        if (recordingDuration >= 120) {
+          _stopTest();
+        }
+      });
+    });
+  }
+
+  void _startScrollingText() {
+    scrollTimer = Timer.periodic(const Duration(seconds: 4), (timer) { // Slower pace for lines
+      setState(() {
+        currentLineIndex++;
+        if (currentLineIndex >= lines.length) {
+          currentLineIndex = lines.length - 1;
+          timer.cancel();
+        }
+      });
+    });
+  }
+
+  void _stopTest() {
+    _stopRecording();
+    recordingTimer?.cancel();
+    scrollTimer?.cancel();
+    setState(() {
+      currentState = ScreenState.analysis;
+    });
+    _analyzeRecording();
   }
 
   Future<void> _stopRecording() async {
@@ -86,8 +202,10 @@ class _VoiceTestScreenState extends State<VoiceTestScreen> {
     _recordedFilePath = path;
     setState(() => _isRecording = false);
     await Future.delayed(const Duration(milliseconds: 500));
+  }
 
-    if (path == null || !File(path).existsSync()) {
+  Future<void> _analyzeRecording() async {
+    if (_recordedFilePath == null || !File(_recordedFilePath!).existsSync()) {
       setState(() => _result = 'Recording file not found');
       return;
     }
@@ -95,10 +213,15 @@ class _VoiceTestScreenState extends State<VoiceTestScreen> {
     setState(() => _result = 'Analyzing...');
 
     try {
-      // --- Convert WAV file to Float32List PCM ---
-      Float32List waveform = await _loadWavAsFloat32(path);
+      Float32List waveform = await _loadWavAsFloat32(_recordedFilePath!);
 
-      // --- Run inference ---
+      // Calculate metrics
+      volume = _calculateVolume(waveform);
+      pitch = _calculatePitch(waveform);
+      clarity = _calculateClarity(waveform);
+      speechPatterns = _calculateSpeechPatterns(waveform);
+
+      // Run inference
       final inference = await _provider.predictFromAudio(waveform);
 
       setState(() {
@@ -113,24 +236,70 @@ class _VoiceTestScreenState extends State<VoiceTestScreen> {
     }
   }
 
-  // --- Helper: Load WAV file as Float32List ---
+  double _calculateVolume(Float32List waveform) {
+    if (waveform.isEmpty) return 0.0;
+    double maxVal = 0;
+    for (var sample in waveform) {
+      maxVal = max(maxVal, sample.abs());
+    }
+    return maxVal;
+  }
+
+  double _calculatePitch(Float32List waveform) {
+    if (waveform.isEmpty) return 0.0;
+    // Simple zero crossing rate for approximate pitch
+    int zeroCrossings = 0;
+    for (int i = 1; i < waveform.length; i++) {
+      if (waveform[i - 1] * waveform[i] < 0) zeroCrossings++;
+    }
+    double duration = waveform.length / 16000.0; // sample rate
+    double freq = zeroCrossings / (2.0 * duration);
+    return freq.clamp(75, 500); // clamp to reasonable range
+  }
+
+  double _calculateClarity(Float32List waveform) {
+    if (waveform.isEmpty) return 0.0;
+    // Simple SNR approximation
+    double signal = waveform.map((x) => x * x).reduce((a, b) => a + b) / waveform.length;
+    double mean = waveform.reduce((a, b) => a + b) / waveform.length;
+    double variance = waveform.map((x) => pow(x - mean, 2)).reduce((a, b) => a + b) / waveform.length;
+    double noise = variance;
+    if (signal + noise == 0) return 0.0;
+    return signal / (signal + noise);
+  }
+
+  List<double> _calculateSpeechPatterns(Float32List waveform) {
+    // Simple segmentation
+    int segments = 4;
+    int segmentLength = waveform.length ~/ segments;
+    List<double> patterns = [];
+    for (int i = 0; i < segments; i++) {
+      int start = i * segmentLength;
+      int end = (i + 1) * segmentLength;
+      if (end > waveform.length) end = waveform.length;
+      double avg = waveform.sublist(start, end).reduce((a, b) => a + b) / (end - start);
+      patterns.add(avg.abs());
+    }
+    return patterns;
+  }
+
+
   Future<Float32List> _loadWavAsFloat32(String filePath) async {
     final file = File(filePath);
     final bytes = await file.readAsBytes();
 
-    // WAV file header is 44 bytes (PCM16)
     final data = bytes.sublist(44);
     final buffer = ByteData.sublistView(Uint8List.fromList(data));
     final samples = Float32List(data.length ~/ 2);
 
     for (int i = 0; i < samples.length; i++) {
-      int val = buffer.getInt16(i * 2, Endian.little);
-      samples[i] = val / 32768.0; // normalize to [-1.0, 1.0]
+      int val = buffer.getUint16(i * 2, Endian.little);
+      val = val - 32768; // convert unsigned to signed
+      samples[i] = val / 32768.0;
     }
     return samples;
   }
 
-  // --- Play recorded audio ---
   Future<void> _playRecording() async {
     if (_recordedFilePath == null || !File(_recordedFilePath!).existsSync()) {
       setState(() => _result = 'No recording to play');
@@ -151,7 +320,6 @@ class _VoiceTestScreenState extends State<VoiceTestScreen> {
     }
   }
 
-  // --- Stop playing audio ---
   Future<void> _stopPlaying() async {
     try {
       await _player?.stopPlayer();
@@ -162,15 +330,23 @@ class _VoiceTestScreenState extends State<VoiceTestScreen> {
     }
   }
 
+  void _retakeTest() {
+    setState(() {
+      currentState = ScreenState.initial;
+      _result = null;
+      _segmentProbabilities = null;
+      waveformData = [];
+      recordingDuration = 0;
+      currentLineIndex = 0;
+    });
+  }
+
   @override
   Widget build(BuildContext context) {
-    bool canStart = _isRecorderReady && !_isRecording;
-    bool canStop = _isRecording;
-
     return Scaffold(
       appBar: AppBar(
         backgroundColor: Colors.white,
-        elevation: 5,
+        elevation: 2,
         leading: IconButton(
           icon: const Icon(Icons.arrow_back, color: Colors.black),
           onPressed: () => Navigator.of(context).pop(),
@@ -180,115 +356,31 @@ class _VoiceTestScreenState extends State<VoiceTestScreen> {
           style: TextStyle(color: Colors.black, fontWeight: FontWeight.w600),
         ),
       ),
-      body: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 24.0, vertical: 32.0),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(
-              _isRecording ? Icons.mic : (_isPlaying ? Icons.play_arrow : Icons.mic_none),
-              size: 150,
-              color: _isRecording ? Colors.red : (_isPlaying ? Colors.green : (canStart ? Colors.blue : Colors.grey)),
-            ),
-            const SizedBox(height: 40),
-            Text(
-              _isRecording ? 'Recording...' : (_isPlaying ? 'Playing...' : 'Prepare for Voice Test'),
-              textAlign: TextAlign.center,
-              style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
-            ),
-            const SizedBox(height: 16),
-            if (_result != null) ...[
-              const SizedBox(height: 20),
-              Container(
-                padding: const EdgeInsets.all(12),
-                decoration: BoxDecoration(
-                  color: Colors.blueGrey.shade50,
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      _result!,
-                      textAlign: TextAlign.center,
-                      style: TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.w600,
-                        color: _result!.contains('Parkinson') ? Colors.red.shade800 : Colors.green.shade800,
-                      ),
-                    ),
-                    if (_segmentProbabilities != null) ...[
-                      const SizedBox(height: 10),
-                      const Text(
-                        'Segment Probabilities:',
-                        style: TextStyle(fontWeight: FontWeight.bold),
-                      ),
-                      ..._segmentProbabilities!.asMap().entries.map((entry) {
-                        int index = entry.key;
-                        double prob = entry.value;
-                        return Text(
-                          'Segment ${index + 1}: ${prob.toStringAsFixed(2)}',
-                          style: TextStyle(
-                            color: prob > 0.5 ? Colors.red : Colors.green,
-                            fontWeight: FontWeight.w500,
-                          ),
-                        );
-                      }),
-                    ],
-                  ],
-                ),
-              ),
-            ],
-            const SizedBox(height: 40),
-            Row(
-              children: [
-                Expanded(
-                  child: SizedBox(
-                    height: 56,
-                    child: ElevatedButton(
-                      onPressed: canStart ? _startRecording : null,
-                      child: Text(
-                        _isRecording ? 'Recording...' : 'Start Recording',
-                        style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-                      ),
-                    ),
-                  ),
-                ),
-                const SizedBox(width: 16),
-                Expanded(
-                  child: SizedBox(
-                    height: 56,
-                    child: ElevatedButton(
-                      onPressed: canStop ? _stopRecording : null,
-                      style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
-                      child: const Text(
-                        'Stop & Analyze',
-                        style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-                      ),
-                    ),
-                  ),
-                ),
-              ],
-            ),
-            if (_recordedFilePath != null) ...[
-              const SizedBox(height: 20),
-              SizedBox(
-                height: 56,
-                child: ElevatedButton(
-                  onPressed: _isPlaying ? _stopPlaying : _playRecording,
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: _isPlaying ? Colors.red : Colors.green,
-                  ),
-                  child: Text(
-                    _isPlaying ? 'Stop Playing' : 'Play Recording',
-                    style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-                  ),
-                ),
-              ),
-            ],
-          ],
-        ),
-      ),
+      body: _buildBody(),
     );
+  }
+
+  Widget _buildBody() {
+    switch (currentState) {
+      case ScreenState.initial:
+        return VoiceTestInitialScreen(onStartTest: _startTest);
+      case ScreenState.recording:
+        return VoiceTestRecordingScreen(
+          recordingDuration: recordingDuration,
+          waveformData: waveformData,
+          text: textToRead,
+          onStopTest: _stopTest,
+        );
+      case ScreenState.analysis:
+        return VoiceTestAnalysisScreen(
+          result: _result,
+          clarity: clarity,
+          volume: volume,
+          pitch: pitch,
+          onPlayRecording: _playRecording,
+          onRetakeTest: _retakeTest,
+          onExportResults: () {},
+        );
+    }
   }
 }

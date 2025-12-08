@@ -5,6 +5,7 @@ class VoiceTestAnalysisScreen extends StatelessWidget {
   final double clarity;
   final double volume;
   final double pitch;
+  final List<List<double>>? segmentProbabilities;
   final VoidCallback onPlayRecording;
   final VoidCallback onRetakeTest;
   final VoidCallback onExportResults;
@@ -15,6 +16,7 @@ class VoiceTestAnalysisScreen extends StatelessWidget {
     required this.clarity,
     required this.volume,
     required this.pitch,
+    required this.segmentProbabilities,
     required this.onPlayRecording,
     required this.onRetakeTest,
     required this.onExportResults,
@@ -84,6 +86,13 @@ class VoiceTestAnalysisScreen extends StatelessWidget {
             color: Colors.orange,
           ),
           const SizedBox(height: 20),
+          // Segment Probabilities
+          if (segmentProbabilities != null && segmentProbabilities!.isNotEmpty) ...[
+            const Text('Segment Probabilities', style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
+            const SizedBox(height: 10),
+            _buildSegmentProbabilitiesCard(segmentProbabilities!),
+            const SizedBox(height: 20),
+          ],
           // Buttons
          
         ],
@@ -335,6 +344,59 @@ class VoiceTestAnalysisScreen extends StatelessWidget {
               ],
             ),
           ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildSegmentProbabilitiesCard(List<List<double>> probabilities) {
+    return Container(
+      padding: const EdgeInsets.all(16.0),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: Colors.grey.shade200),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.05),
+            spreadRadius: 1,
+            blurRadius: 5,
+            offset: const Offset(0, 3),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text(
+            'Per-Segment Predictions',
+            style: TextStyle(
+              fontSize: 18,
+              fontWeight: FontWeight.w600,
+              color: Colors.black,
+            ),
+          ),
+          const SizedBox(height: 12),
+          ...probabilities.asMap().entries.map((entry) {
+            int index = entry.key;
+            List<double> probs = entry.value;
+            return Padding(
+              padding: const EdgeInsets.symmetric(vertical: 4.0),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Text(
+                    'Segment ${index + 1}',
+                    style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w500),
+                  ),
+                  Text(
+                    'Healthy: ${(probs[0] * 100).toStringAsFixed(1)}% | Parkinson: ${(probs[1] * 100).toStringAsFixed(1)}%',
+                    style: const TextStyle(fontSize: 14, color: Colors.grey),
+                  ),
+                ],
+              ),
+            );
+          }),
         ],
       ),
     );

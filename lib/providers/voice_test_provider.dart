@@ -12,7 +12,7 @@ class ParkinsonInferenceResult {
   final int overallClass; // 0 = healthy, 1 = Parkinson's
   final int parkinsonSegmentCount;
   final double confidence; // percentage 0-100%
-  final List<double> segmentProbabilities;
+  final List<List<double>> segmentProbabilities; // [prob_healthy, prob_parkinson] per segment
 
   ParkinsonInferenceResult({
     required this.overallClass,
@@ -70,7 +70,7 @@ class ParkinsonInferenceProvider extends ChangeNotifier {
       print("Starting inference on ${waveform.length} samples, $totalSegments segments");
 
       List<int> segmentPredictions = [];
-      List<double> segmentProbabilities = [];
+      List<List<double>> segmentProbabilities = [];
 
       for (int i = 0; i < totalSegments; i++) {
         try {
@@ -111,8 +111,8 @@ class ParkinsonInferenceProvider extends ChangeNotifier {
           // Assuming output is [prob_class0, prob_class1], use prob_class1
           int predictedClass = classifierOutput[0][1] >= 0.5 ? 1 : 0;
           segmentPredictions.add(predictedClass);
-          segmentProbabilities.add(classifierOutput[0][1]);
-          print("Segment $i prediction: $predictedClass (prob: ${classifierOutput[0][0]})");
+          segmentProbabilities.add(classifierOutput[0]);
+          print("Segment $i prediction: $predictedClass (probs: [${classifierOutput[0][0]}, ${classifierOutput[0][1]}])");
         } catch (e, stackTrace) {
           print("Error processing segment $i: $e");
           print("Stack trace: $stackTrace");

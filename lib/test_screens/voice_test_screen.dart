@@ -30,7 +30,7 @@ class _VoiceTestScreenState extends State<VoiceTestScreen> with TickerProviderSt
   bool _isRecorderReady = false;
   String? _result;
   String? _recordedFilePath;
-  List<double>? _segmentProbabilities;
+  List<List<double>>? _segmentProbabilities;
   final ParkinsonInferenceProvider _provider = ParkinsonInferenceProvider();
 
   ScreenState currentState = ScreenState.initial;
@@ -56,7 +56,20 @@ class _VoiceTestScreenState extends State<VoiceTestScreen> with TickerProviderSt
 
 
   final String textToRead = """
-The quick brown fox jumps over the lazy dog. This is a sample text for voice recording. Please read it aloud clearly and at a natural pace. The system will analyze your voice for potential signs of Parkinson's disease. Speak loudly enough for the microphone to capture your voice accurately. Remember to pronounce each word distinctly.
+Passage 1 
+
+The north wind and the sun were arguing about which of them was stronger. As they argued, a traveler came along wearing a warm cloak. They agreed that whoever could make the traveler remove his cloak would be considered the stronger.
+The north wind blew with all his force, but the harder he blew, the tighter the traveler held his cloak around himself. Finally, the north wind gave up. Then the sun shone warmly, and almost at once the traveler removed his cloak. The north wind had to admit that the sun was stronger.
+
+Passage 2 
+
+The scattering of sunlight in the atmosphere affects how the sun appears to an observer. When the path of sunlight through the atmosphere is longer, more blue light is scattered, and the degree of scattering of incoming radiation changes.
+At higher observation altitudes, the sun appears whiter and less orange because a greater portion of the sunlight reaches the observer directly.
+
+Passage 3
+
+Electromagnetic energy from the sun travels through the atmosphere, reaches the earth, and then travels back up toward sensors mounted on orbiting satellites.
+Shorter wavelengths are more easily scattered in the atmosphere. To the satellite sensor, it can appear as though all the reflected energy comes from a single point on the ground. In reality, some of the energy has been scattered within the atmosphere and never actually reached the earth’s surface before being detected.
 """;
 
   List<String> _splitIntoLines(String text, int wordsPerLine) {
@@ -375,6 +388,7 @@ The quick brown fox jumps over the lazy dog. This is a sample text for voice rec
           clarity: clarity,
           volume: volume,
           pitch: pitch,
+          segmentProbabilities: _segmentProbabilities,
           onPlayRecording: _playRecording,
           onRetakeTest: _retakeTest,
           onExportResults: () {},

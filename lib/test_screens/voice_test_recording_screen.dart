@@ -90,7 +90,7 @@ class VoiceTestRecordingScreen extends StatelessWidget {
                                 ),
                               ],
                             ),
-child: const SmoothAudioBars(),
+                            child: SmoothAudioBars(isPaused: isPaused),
                           ),
 
                           const SizedBox(height: 20),
@@ -178,7 +178,9 @@ child: const SmoothAudioBars(),
 }
 
 class SmoothAudioBars extends StatefulWidget {
-  const SmoothAudioBars({super.key});
+  final bool isPaused;
+
+  const SmoothAudioBars({super.key, required this.isPaused});
 
   @override
   State<SmoothAudioBars> createState() => _SmoothAudioBarsState();
@@ -203,6 +205,18 @@ class _SmoothAudioBarsState extends State<SmoothAudioBars>
       vsync: this,
       duration: const Duration(seconds: 2),
     )..repeat();
+  }
+
+  @override
+  void didUpdateWidget(covariant SmoothAudioBars oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (widget.isPaused != oldWidget.isPaused) {
+      if (widget.isPaused) {
+        _controller.stop();
+      } else {
+        _controller.repeat();
+      }
+    }
   }
 
   @override

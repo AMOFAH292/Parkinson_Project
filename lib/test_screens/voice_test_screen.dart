@@ -47,6 +47,8 @@ class _VoiceTestScreenState extends State<VoiceTestScreen> with TickerProviderSt
   List<String> lines = [];
   int currentLineIndex = 0;
 
+  bool isPaused = false;
+
   // Metrics
   double pitch = 0.0;
   double volume = 0.0;
@@ -183,6 +185,26 @@ The quick brown fox jumps over the lazy dog. This is a sample text for voice rec
         }
       });
     });
+  }
+
+  void _pauseOrResumeRecording() {
+    if (isPaused) {
+      _resumeRecording();
+    } else {
+      _pauseRecording();
+    }
+  }
+
+  Future<void> _pauseRecording() async {
+    await _recorder?.pauseRecorder();
+    recordingTimer?.cancel();
+    setState(() => isPaused = true);
+  }
+
+  Future<void> _resumeRecording() async {
+    await _recorder?.resumeRecorder();
+    _startTimer();
+    setState(() => isPaused = false);
   }
 
   void _stopTest() {
@@ -369,6 +391,8 @@ The quick brown fox jumps over the lazy dog. This is a sample text for voice rec
           recordingDuration: recordingDuration,
           waveformData: waveformData,
           text: textToRead,
+          isPaused: isPaused,
+          onPauseResume: _pauseOrResumeRecording,
           onStopTest: _stopTest,
         );
       case ScreenState.analysis:

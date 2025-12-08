@@ -36,7 +36,6 @@ class _VoiceTestScreenState extends State<VoiceTestScreen> with TickerProviderSt
   ScreenState currentState = ScreenState.initial;
   Timer? recordingTimer;
   int recordingDuration = 0;
-  List<double> waveformData = [];
   ScrollController textScrollController = ScrollController();
   Timer? scrollTimer;
   double textScrollPosition = 0.0;
@@ -114,7 +113,6 @@ The quick brown fox jumps over the lazy dog. This is a sample text for voice rec
     setState(() {
       currentState = ScreenState.recording;
       recordingDuration = 0;
-      waveformData = [];
       currentLineIndex = 0;
     });
     _startRecording();
@@ -139,30 +137,8 @@ The quick brown fox jumps over the lazy dog. This is a sample text for voice rec
       codec: Codec.pcm16WAV,
       sampleRate: 16000,
     );
-
-    // Read waveform data from file periodically
-    Timer.periodic(const Duration(milliseconds: 100), (timer) {
-      if (!_isRecording) {
-        timer.cancel();
-        return;
-      }
-      if (File(path).existsSync()) {
-        final bytes = File(path).readAsBytesSync();
-        if (bytes.length > 44) {
-          final data = bytes.sublist(44);
-          final buffer = ByteData.sublistView(Uint8List.fromList(data));
-          final samples = <double>[];
-          int numSamples = min(data.length ~/ 2, 200);
-          for (int i = 0; i < numSamples; i++) {
-            int val = buffer.getUint16(i * 2, Endian.little);
-            val = val - 32768; // convert unsigned to signed
-            samples.add(val / 32768.0);
-          }
-          setState(() => waveformData = samples);
-        }
-      }
-    });
   }
+
 
   void _startTimer() {
     recordingTimer = Timer.periodic(const Duration(seconds: 1), (timer) {
@@ -357,7 +333,6 @@ The quick brown fox jumps over the lazy dog. This is a sample text for voice rec
       currentState = ScreenState.initial;
       _result = null;
       _segmentProbabilities = null;
-      waveformData = [];
       recordingDuration = 0;
       currentLineIndex = 0;
     });
@@ -389,7 +364,6 @@ The quick brown fox jumps over the lazy dog. This is a sample text for voice rec
       case ScreenState.recording:
         return VoiceTestRecordingScreen(
           recordingDuration: recordingDuration,
-          waveformData: waveformData,
           text: textToRead,
           isPaused: isPaused,
           onPauseResume: _pauseOrResumeRecording,

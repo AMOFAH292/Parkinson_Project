@@ -98,6 +98,168 @@ class DoctorReferralScreen extends StatelessWidget {
   }
 }
 
+class BookingBottomSheet extends StatefulWidget {
+  final Doctor doctor;
+
+  const BookingBottomSheet({super.key, required this.doctor});
+
+  @override
+  State<BookingBottomSheet> createState() => _BookingBottomSheetState();
+}
+
+class _BookingBottomSheetState extends State<BookingBottomSheet> {
+  String? selectedTimeSlot;
+
+  final List<String> availableSlots = [
+    'Today, 10:00 AM',
+    'Today, 2:00 PM',
+    'Tomorrow, 9:00 AM',
+    'Tomorrow, 3:00 PM',
+    'Friday, 11:00 AM',
+    'Friday, 4:00 PM',
+  ];
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.all(20),
+      constraints: BoxConstraints(
+        maxHeight: MediaQuery.of(context).size.height * 0.8,
+      ),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Header
+          Row(
+            children: [
+              ClipRRect(
+                borderRadius: BorderRadius.circular(25),
+                child: Image.asset(
+                  widget.doctor.imageUrl,
+                  height: 50,
+                  width: 50,
+                  fit: BoxFit.cover,
+                  errorBuilder: (context, error, stackTrace) => Container(
+                    height: 50,
+                    width: 50,
+                    color: Colors.grey.shade200,
+                    alignment: Alignment.center,
+                    child: const Icon(Icons.person, size: 25, color: Colors.grey),
+                  ),
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      widget.doctor.name,
+                      style: const TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.black,
+                      ),
+                    ),
+                    Text(
+                      widget.doctor.specialty,
+                      style: const TextStyle(
+                        fontSize: 14,
+                        color: Colors.grey,
+                      ),
+                    ),
+                    Row(
+                      children: [
+                        const Icon(Icons.star, size: 16, color: Colors.amber),
+                        const SizedBox(width: 4),
+                        Text(
+                          '${widget.doctor.rating} • ${widget.doctor.experience} experience',
+                          style: const TextStyle(
+                            fontSize: 12,
+                            color: Colors.grey,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+              IconButton(
+                onPressed: () => Navigator.of(context).pop(),
+                icon: const Icon(Icons.close),
+              ),
+            ],
+          ),
+          const SizedBox(height: 20),
+          const Text(
+            'Available Time Slots',
+            style: TextStyle(
+              fontSize: 16,
+              fontWeight: FontWeight.bold,
+              color: Colors.black,
+            ),
+          ),
+          const SizedBox(height: 12),
+          // Time slots
+          Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            children: availableSlots.map((slot) {
+              final isSelected = selectedTimeSlot == slot;
+              return ChoiceChip(
+                label: Text(slot),
+                selected: isSelected,
+                onSelected: (selected) {
+                  setState(() {
+                    selectedTimeSlot = selected ? slot : null;
+                  });
+                },
+                selectedColor: Theme.of(context).primaryColor.withOpacity(0.2),
+                backgroundColor: Colors.grey.shade100,
+                labelStyle: TextStyle(
+                  color: isSelected ? Theme.of(context).primaryColor : Colors.black,
+                  fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+                ),
+              );
+            }).toList(),
+          ),
+          const SizedBox(height: 24),
+          // Book button
+          SizedBox(
+            width: double.infinity,
+            child: ElevatedButton(
+              onPressed: selectedTimeSlot != null
+                  ? () {
+                      Navigator.of(context).pop();
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(
+                          content: Text('Appointment booked with ${widget.doctor.name} at $selectedTimeSlot!'),
+                          backgroundColor: Colors.green,
+                        ),
+                      );
+                    }
+                  : null,
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.blue,
+                foregroundColor: Colors.white,
+                padding: const EdgeInsets.symmetric(vertical: 16),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
+              ),
+              child: const Text(
+                'Confirm Booking',
+                style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
 class DoctorCard extends StatelessWidget {
   final Doctor doctor;
 
@@ -106,7 +268,7 @@ class DoctorCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.all(16.0),
+      margin: const EdgeInsets.only(bottom: 16.0),
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(12),
@@ -120,48 +282,56 @@ class DoctorCard extends StatelessWidget {
           ),
         ],
       ),
-      child: Row(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Doctor Image
-          ClipRRect(
-            borderRadius: BorderRadius.circular(8),
-            child: Image.asset(
-              doctor.imageUrl,
-              height: 60,
-              width: 60,
-              fit: BoxFit.cover,
-              errorBuilder: (context, error, stackTrace) => Container(
-                height: 60,
-                width: 60,
-                color: Colors.grey.shade200,
-                alignment: Alignment.center,
-                child: const Icon(Icons.person, size: 30, color: Colors.grey),
-              ),
-            ),
-          ),
-          const SizedBox(width: 16),
-          // Doctor Details
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
+          // Header with profile pic and name
+          Padding(
+            padding: const EdgeInsets.all(12.0),
+            child: Row(
               children: [
-                Text(
-                  doctor.name,
-                  style: const TextStyle(
-                    fontSize: 18,
-                    fontWeight: FontWeight.w600,
-                    color: Colors.black,
+                // Profile Picture
+                ClipRRect(
+                  borderRadius: BorderRadius.circular(20),
+                  child: Image.asset(
+                    doctor.imageUrl,
+                    height: 40,
+                    width: 40,
+                    fit: BoxFit.cover,
+                    errorBuilder: (context, error, stackTrace) => Container(
+                      height: 40,
+                      width: 40,
+                      color: Colors.grey.shade200,
+                      alignment: Alignment.center,
+                      child: const Icon(Icons.person, size: 20, color: Colors.grey),
+                    ),
                   ),
                 ),
-                const SizedBox(height: 4),
-                Text(
-                  doctor.specialty,
-                  style: const TextStyle(
-                    fontSize: 14,
-                    color: Colors.grey,
+                const SizedBox(width: 12),
+                // Name and specialty
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        doctor.name,
+                        style: const TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.w600,
+                          color: Colors.black,
+                        ),
+                      ),
+                      Text(
+                        doctor.specialty,
+                        style: const TextStyle(
+                          fontSize: 14,
+                          color: Colors.grey,
+                        ),
+                      ),
+                    ],
                   ),
                 ),
-                const SizedBox(height: 4),
+                // Rating
                 Row(
                   children: [
                     const Icon(Icons.star, size: 16, color: Colors.amber),
@@ -174,57 +344,92 @@ class DoctorCard extends StatelessWidget {
                         color: Colors.black87,
                       ),
                     ),
-                    const SizedBox(width: 8),
-                    Text(
-                      '${doctor.experience} experience',
-                      style: const TextStyle(
-                        fontSize: 12,
-                        color: Colors.grey,
-                      ),
-                    ),
                   ],
                 ),
               ],
             ),
           ),
-          // Book Button
-          ElevatedButton(
-            onPressed: () {
-              // Show booking dialog
-              showDialog(
-                context: context,
-                builder: (context) => AlertDialog(
-                  title: Text('Book Appointment with ${doctor.name}'),
-                  content: const Text('Select a date and time for your appointment.'),
-                  actions: [
-                    TextButton(
-                      onPressed: () => Navigator.of(context).pop(),
-                      child: const Text('Cancel'),
+          // Main Image
+          ClipRRect(
+            borderRadius: BorderRadius.zero,
+            child: Image.asset(
+              doctor.imageUrl,
+              height: 200,
+              width: double.infinity,
+              fit: BoxFit.cover,
+              errorBuilder: (context, error, stackTrace) => Container(
+                height: 200,
+                color: Colors.grey.shade200,
+                alignment: Alignment.center,
+                child: const Icon(Icons.person, size: 50, color: Colors.grey),
+              ),
+            ),
+          ),
+          // Reactions and actions
+          Padding(
+            padding: const EdgeInsets.all(12.0),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // Reaction buttons
+                Row(
+                  children: [
+                    IconButton(
+                      icon: const Icon(Icons.favorite_border, color: Colors.black),
+                      onPressed: () {},
                     ),
-                    ElevatedButton(
-                      onPressed: () {
-                        Navigator.of(context).pop();
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          SnackBar(
-                            content: Text('Appointment booked with ${doctor.name}!'),
-                            backgroundColor: Colors.green,
-                          ),
-                        );
-                      },
-                      child: const Text('Book Now'),
+                    IconButton(
+                      icon: const Icon(Icons.comment_outlined, color: Colors.black),
+                      onPressed: () {},
+                    ),
+                    IconButton(
+                      icon: const Icon(Icons.share_outlined, color: Colors.black),
+                      onPressed: () {},
+                    ),
+                    const Spacer(),
+                    IconButton(
+                      icon: const Icon(Icons.bookmark_border, color: Colors.black),
+                      onPressed: () {},
                     ),
                   ],
                 ),
-              );
-            },
-            style: ElevatedButton.styleFrom(
-              backgroundColor: Theme.of(context).primaryColor,
-              foregroundColor: Colors.white,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(8),
-              ),
+                // Description
+                Text(
+                  '${doctor.name} is a board-certified ${doctor.specialty.toLowerCase()} with ${doctor.experience} of experience in neurological care. Schedule your appointment to receive personalized treatment.',
+                  style: const TextStyle(
+                    fontSize: 14,
+                    color: Colors.black87,
+                    height: 1.4,
+                  ),
+                ),
+                const SizedBox(height: 12),
+                // Book Button
+                SizedBox(
+                  width: double.infinity,
+                  child: ElevatedButton(
+                    onPressed: () {
+                      // Show booking bottom sheet
+                      showModalBottomSheet(
+                        context: context,
+                        isScrollControlled: true,
+                        shape: const RoundedRectangleBorder(
+                          borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+                        ),
+                        builder: (context) => BookingBottomSheet(doctor: doctor),
+                      );
+                    },
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.blue,
+                      foregroundColor: Colors.white,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                    ),
+                    child: const Text('Book Appointment'),
+                  ),
+                ),
+              ],
             ),
-            child: const Text('Book'),
           ),
         ],
       ),

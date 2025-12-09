@@ -3,6 +3,7 @@ import 'package:park_ai/main_pages/explore.dart';
 import 'package:park_ai/main_pages/home.dart';
 import 'package:park_ai/main_pages/history.dart';
 import 'package:park_ai/main_pages/doctor_referral.dart';
+import 'package:park_ai/main_pages/chat_list_screen.dart';
 
 class RootScreen extends StatefulWidget {
   const RootScreen({super.key});
@@ -19,6 +20,7 @@ class _RootScreenState extends State<RootScreen> {
     HistoryScreen(),
     ExploreScreen(),
     DoctorReferralScreen(),
+    ChatListScreen(),
   ];
 
   void _onItemTapped(int index) {
@@ -55,6 +57,11 @@ class _RootScreenState extends State<RootScreen> {
             icon: Icon(Icons.medical_services_outlined),
             activeIcon: Icon(Icons.medical_services),
             label: 'Doctors',
+          ),
+          BottomNavigationBarItem(
+            icon: Icon(Icons.chat_outlined),
+            activeIcon: Icon(Icons.chat),
+            label: 'AI Assistant',
           ),
         ],
         currentIndex: _selectedIndex,

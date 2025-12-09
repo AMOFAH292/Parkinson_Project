@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:park_ai/main_pages/tracking.dart';
 import 'package:park_ai/test_screens/gait_test_screen.dart';
 import 'package:park_ai/test_screens/tremor_test_screen.dart';
 import 'package:park_ai/test_screens/voice_test_screen.dart';
@@ -50,11 +51,16 @@ class _HomeScreenState extends State<HomeScreen> {
           child: Row(
             children: [
               IconButton(
-                icon: const Icon(Icons.grid_view_rounded, color: Colors.black),
-                onPressed: () {},
+                icon: const Icon(Icons.tune, color: Colors.orange),
+                onPressed: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(builder: (context) => const TrackingScreen()),
+                  );
+                },
               ),
               IconButton(
-                icon: const Icon(Icons.favorite_border, color: Colors.black),
+                icon: const Icon(Icons.favorite_border, color: Colors.red),
                 onPressed: () {},
               ),
             ],
@@ -63,7 +69,7 @@ class _HomeScreenState extends State<HomeScreen> {
         // Right side: Search and More icons
         actions: [
           IconButton(
-            icon: const Icon(Icons.search, color: Colors.black),
+            icon: const Icon(Icons.search, color: Colors.blue),
             onPressed: () {},
           ),
           IconButton(
